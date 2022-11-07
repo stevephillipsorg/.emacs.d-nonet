@@ -274,19 +274,6 @@ that was stored with sjp/point-to-register."
 ;;
 ;; Make some thing pretty
 ;;
-;; --- All the Icons
-;; This adds all kinds of icons for use in emacs, which many packages take advantage of
-
-(use-package all-the-icons
-  :if (display-graphic-p))
-
-;; Have to run once after installation
-(all-the-icons-install-fonts)
-
-;; Add support for icons in some modes/packages
-(use-package all-the-icons-dired
-  :hook (dired-mode . all-the-icons-dired-mode))
-
 ;; --- Dired and Dirvish
 ;; First, lets set the options for the =ls= command for the best listing
 ;;; set the options for the =ls= command for the best listing
