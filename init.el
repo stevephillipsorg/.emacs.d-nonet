@@ -40,12 +40,17 @@
 (add-hook 
  'after-init-hook 
  (lambda () 
-   (let ((custom-file (concat user-emacs-directory "custom.el")) 
-         (private-file (concat user-emacs-directory "private.el"))) 
+   (let
+       (
+        (custom-file (concat user-emacs-directory "custom.el")) 
+        (private-file (concat user-emacs-directory "private.el"))
+        ) 
      (when (file-exists-p custom-file)  (load-file custom-file)) 
      (when (file-exists-p private-file) (load-file private-file)) 
-     ;; (server-start)  ;; Maybe Sockeye wouldn't like me to run servers? 
-     ))) 
+     )
+   )
+ ) 
+
 
 ;; This macro that is used for setting custom variables. The builtin
 ;; custom-set-variables comes close to this, but this is invisible to
@@ -289,34 +294,236 @@ that was stored with sjp/point-to-register."
   (:map dired-mode-map
         ("TAB" . dired-subtree-toggle)))
 
+
 ;; -------------------------------------------------------------------- 
-;; Ivy/Counsel/Swiper - https://goo.gl/uv6e2k 
-;; Configure to use ivy-mode for completion 
-;; These config lines stolen from - https://tinyurl.com/yxas68kw 
-(use-package ivy 
-  :defer 0.1 
-  :diminish 
-  :bind (("C-c C-r" . ivy-resume) 
-         ("C-x B" . ivy-switch-buffer-other-window)) 
-  :custom 
-  (ivy-count-format "(%d/%d) ") 
-  (ivy-use-virtual-buffers t) 
-  :config (ivy-mode)) 
+;; Vertico/Orderless/Marginalia
 
-(use-package counsel 
-  :after ivy 
-  :config (counsel-mode) 
-  :bind ("<f5>" . counsel-load-theme) 
-  ) 
+;; Enable vertico
+(use-package vertico
+  :custom
+  (vertico-count 13)                    ; Number of candidates to display
+  (vertico-resize t)
+  (vertico-cycle nil) ; Go from last to first candidate and first to last (cycle)?
+  :bind (:map vertico-map
+            ("<tab>" . #'vertico-insert)  ; Insert selected candidate into text are;a
+            ("<escape>" . #'minibuffer-keyboard-quit) ; Close minibuffer
+            ;; NOTE 2022-02-05: Cycle through candidate groups
+            ;;"C-M-n" #'vertico-next-group
+            ;;"C-M-p" #'vertico-previous-group
+            )
+  :config
+  (vertico-mode))
 
-(use-package ivy-rich 
-  :ensure t 
-  :after (:all ivy counsel) 
-  :init (setq ivy-rich-parse-remote-file-path t) 
-  :config (ivy-rich-mode 1)) 
+;; Persist history over Emacs restarts. Vertico sorts by history position.
+(use-package savehist
+  :init
+  (savehist-mode))
 
+;; Marginalis adds addtional information to the list items
+(use-package marginalia
+  :bind (:map minibuffer-local-map
+              ("M-A" . #'marginalia-cycle))
+  :custom
+  (marginalia-max-relative-age 0)
+  (marginalia-align 'right)
+  :init
+  (marginalia-mode))
+
+;; Orderless makes the search look for any order of the search terms
+(use-package orderless
+  :init
+  ;; Configure a custom style dispatcher (see the Consult wiki)
+  ;; (setq orderless-style-dispatchers '(+orderless-dispatch)
+  ;;       orderless-component-separator #'orderless-escapable-split-on-space)
+  (setq completion-styles '(orderless basic)
+        completion-category-defaults nil
+        completion-category-overrides '((file (styles partial-completion)))))
+
+;; Configure directory extension.
+(use-package vertico-directory
+  :after vertico
+  :ensure nil
+  ;; More convenient directory navigation commands
+  :bind (:map vertico-map
+              ("RET" . vertico-directory-enter)
+              ("DEL" . vertico-directory-delete-char)
+              ("M-DEL" . vertico-directory-delete-word))
+  ;; Tidy shadowed file names
+  :hook (rfn-eshadow-update-overlay . vertico-directory-tidy))
+
+;; Example configuration for Consult, taken from
+;;   https://github.com/minad/consult
+(use-package consult
+  ;; Replace bindings. Lazily loaded due by `use-package'.
+  :bind (;; C-c bindings (mode-specific-map)
+         ("C-c h" . consult-history)
+         ("C-c m" . consult-mode-command)
+         ("C-c k" . consult-kmacro)
+         ;; C-x bindings (ctl-x-map)
+         ("C-x M-:" . consult-complex-command)     ;; orig. repeat-complex-command
+         ("C-x b" . consult-buffer)                ;; orig. switch-to-buffer
+         ("C-x 4 b" . consult-buffer-other-window) ;; orig. switch-to-buffer-other-window
+         ("C-x 5 b" . consult-buffer-other-frame)  ;; orig. switch-to-buffer-other-frame
+         ("C-x r b" . consult-bookmark)            ;; orig. bookmark-jump
+         ("C-x p b" . consult-project-buffer)      ;; orig. project-switch-to-buffer
+         ;; Custom M-# bindings for fast register access
+         ("M-#" . consult-register-load)
+         ("M-'" . consult-register-store)          ;; orig. abbrev-prefix-mark (unrelated)
+         ("C-M-#" . consult-register)
+         ;; Other custom bindings
+         ("M-y" . consult-yank-pop)                ;; orig. yank-pop
+         ("<help> a" . consult-apropos)            ;; orig. apropos-command
+         ;; M-g bindings (goto-map)
+         ("M-g e" . consult-compile-error)
+         ("M-g f" . consult-flymake)               ;; Alternative: consult-flycheck
+         ("M-g g" . consult-goto-line)             ;; orig. goto-line
+         ("M-g M-g" . consult-goto-line)           ;; orig. goto-line
+         ("M-g o" . consult-outline)               ;; Alternative: consult-org-heading
+         ("M-g m" . consult-mark)
+         ("M-g k" . consult-global-mark)
+         ("M-g i" . consult-imenu)
+         ("M-g I" . consult-imenu-multi)
+         ;; M-s bindings (search-map)
+         ("M-s d" . consult-find)
+         ("M-s D" . consult-locate)
+         ("M-s g" . consult-grep)
+         ("M-s G" . consult-git-grep)
+         ("M-s r" . consult-ripgrep)
+         ("M-s l" . consult-line)
+         ("M-s L" . consult-line-multi)
+         ("M-s m" . consult-multi-occur)
+         ("M-s k" . consult-keep-lines)
+         ("M-s u" . consult-focus-lines)
+         ;; Isearch integration
+         ("M-s e" . consult-isearch-history)
+         :map isearch-mode-map
+         ("M-e" . consult-isearch-history)         ;; orig. isearch-edit-string
+         ("M-s e" . consult-isearch-history)       ;; orig. isearch-edit-string
+         ("M-s l" . consult-line)                  ;; needed by consult-line to detect isearch
+         ("M-s L" . consult-line-multi)            ;; needed by consult-line to detect isearch
+         ;; Minibuffer history
+         :map minibuffer-local-map
+         ("M-s" . consult-history)                 ;; orig. next-matching-history-element
+         ("M-r" . consult-history))                ;; orig. previous-matching-history-element
+
+  ;; Enable automatic preview at point in the *Completions* buffer. This is
+  ;; relevant when you use the default completion UI.
+  :hook (completion-list-mode . consult-preview-at-point-mode)
+
+  ;; The :init configuration is always executed (Not lazy)
+  :init
+
+  ;; Optionally configure the register formatting. This improves the register
+  ;; preview for `consult-register', `consult-register-load',
+  ;; `consult-register-store' and the Emacs built-ins.
+  (setq register-preview-delay 0.5
+        register-preview-function #'consult-register-format)
+
+  ;; Optionally tweak the register preview window.
+  ;; This adds thin lines, sorting and hides the mode line of the window.
+  (advice-add #'register-preview :override #'consult-register-window)
+
+  ;; Use Consult to select xref locations with preview
+  (setq xref-show-xrefs-function #'consult-xref
+        xref-show-definitions-function #'consult-xref)
+
+  ;; Configure other variables and modes in the :config section,
+  ;; after lazily loading the package.
+  :config
+
+  ;; Optionally configure preview. The default value
+  ;; is 'any, such that any key triggers the preview.
+  ;; (setq consult-preview-key 'any)
+  ;; (setq consult-preview-key (kbd "M-."))
+  ;; (setq consult-preview-key (list (kbd "<S-down>") (kbd "<S-up>")))
+  ;; For some commands and buffer sources it is useful to configure the
+  ;; :preview-key on a per-command basis using the `consult-customize' macro.
+  (consult-customize
+   consult-theme :preview-key '(:debounce 0.2 any)
+   consult-ripgrep consult-git-grep consult-grep
+   consult-bookmark consult-recent-file consult-xref
+   consult--source-bookmark consult--source-file-register
+   consult--source-recent-file consult--source-project-recent-file
+   ;; :preview-key (kbd "M-.")
+   :preview-key '(:debounce 0.4 any))
+
+  ;; Optionally configure the narrowing key.
+  ;; Both < and C-+ work reasonably well.
+  (setq consult-narrow-key "<") ;; (kbd "C-+")
+
+  ;; Optionally make narrowing help available in the minibuffer.
+  ;; You may want to use `embark-prefix-help-command' or which-key instead.
+  ;; (define-key consult-narrow-map (vconcat consult-narrow-key "?") #'consult-narrow-help)
+
+  ;; By default `consult-project-function' uses `project-root' from project.el.
+  ;; Optionally configure a different project root function.
+  ;; There are multiple reasonable alternatives to chose from.
+  ;;;; 1. project.el (the default)
+  ;; (setq consult-project-function #'consult--default-project--function)
+  ;;;; 2. projectile.el (projectile-project-root)
+  ;; (autoload 'projectile-project-root "projectile")
+  ;; (setq consult-project-function (lambda (_) (projectile-project-root)))
+  ;;;; 3. vc.el (vc-root-dir)
+  ;; (setq consult-project-function (lambda (_) (vc-root-dir)))
+  ;;;; 4. locate-dominating-file
+  ;; (setq consult-project-function (lambda (_) (locate-dominating-file "." ".git")))
+  )
+
+(use-package embark
+  :ensure t
+
+  :bind
+  (("C-." . embark-act)         ;; pick some comfortable binding
+   ("C-;" . embark-dwim)        ;; good alternative: M-.
+   ("C-h B" . embark-bindings)) ;; alternative for `describe-bindings'
+
+  :init
+
+  ;; Optionally replace the key help with a completing-read interface
+  (setq prefix-help-command #'embark-prefix-help-command)
+
+  :config
+
+  ;; Hide the mode line of the Embark live/completions buffers
+  (add-to-list 'display-buffer-alist
+               '("\\`\\*Embark Collect \\(Live\\|Completions\\)\\*"
+                 nil
+                 (window-parameters (mode-line-format . none)))))
+
+;; Consult users will also want the embark-consult package.
+(use-package embark-consult
+  :ensure t ; only need to install it, embark loads it after consult if found
+  :hook
+  (embark-collect-mode . consult-preview-at-point-mode))
+
+;;sjp;; ;; -------------------------------------------------------------------- 
+;;sjp;; ;; Ivy/Counsel/Swiper - https://goo.gl/uv6e2k 
+;;sjp;; ;; Configure to use ivy-mode for completion 
+;;sjp;; ;; These config lines stolen from - https://tinyurl.com/yxas68kw 
+;;sjp;; (use-package ivy 
+;;sjp;;   :defer 0.1 
+;;sjp;;   :diminish 
+;;sjp;;   :bind (("C-c C-r" . ivy-resume) 
+;;sjp;;          ("C-x B" . ivy-switch-buffer-other-window)) 
+;;sjp;;   :custom 
+;;sjp;;   (ivy-count-format "(%d/%d) ") 
+;;sjp;;   (ivy-use-virtual-buffers t) 
+;;sjp;;   :config (ivy-mode)) 
+;;sjp;; 
+;;sjp;; (use-package counsel 
+;;sjp;;   :after ivy 
+;;sjp;;   :config (counsel-mode) 
+;;sjp;;   :bind ("<f5>" . counsel-load-theme) 
+;;sjp;;   ) 
+;;sjp;; 
+;;sjp;; (use-package ivy-rich 
+;;sjp;;   :ensure t 
+;;sjp;;   :after (:all ivy counsel) 
+;;sjp;;   :init (setq ivy-rich-parse-remote-file-path t) 
+;;sjp;;   :config (ivy-rich-mode 1)) 
+;;sjp;; 
 (use-package swiper 
-  :after ivy 
+;;  :after ivy 
   :bind (("C-s" . swiper) 
          ("C-r" . swiper))) 
 
@@ -327,6 +534,36 @@ that was stored with sjp/point-to-register."
   :ensure t 
   :bind ("C-x g" . magit-status) 
   ) 
+
+;; Diff-hl uses the VC system to determine changes and highlights them in the fringe.  
+(use-package diff-hl
+  :ensure t 
+  :init
+  ;; enables diff-hl for all buffers
+  (global-diff-hl-mode)
+  ;; diff-hl marks changes on the fly
+  (diff-hl-flydiff-mode)
+  ;;; adds diff-hl for dired mode
+  (add-hook 'dired-mode-hook 'diff-hl-dired-mode)
+  )
+
+;; Set fringe width to 16 pixels on the left and the default of 8 on the right
+;;sjp;; (fringe-mode '(16 . 8))
+
+;;sjp;; (use-package git-emacs
+;;sjp;;   :ensure t 
+;;sjp;;   )
+
+;; This package provides an emacs interface for Gerrit, a great code review tool
+(use-package gerrit
+  :ensure t
+  :custom
+  (gerrit-host "gerrit.my.domain")  ;; is needed for REST API calls
+  :config
+  (progn
+    (add-hook 'magit-status-sections-hook #'gerrit-magit-insert-status t)
+    (global-set-key (kbd "C-x i") 'gerrit-upload-transient)
+    (global-set-key (kbd "C-x o") 'gerrit-download)))
 
 ;; smart-mode-line - https://goo.gl/cJjp28 
 ;; makes your modeline smarter 
@@ -352,11 +589,13 @@ that was stored with sjp/point-to-register."
   :init 
   (global-smartscan-mode 1)) 
 
-;; elpa-mirror - https://github.com/d12frosted/elpa-mirror 
-;; Creates archive of packages used in your .emacs/.init.el 
-(use-package elpa-mirror 
+;; vlf - Very Large File - Allows one to visit part of large
+;;       file without loading it entirely
+(use-package vlf
   :ensure t 
-  ) 
+  )
+
+
 
 ;;-------------------------------------------------------------- 
 ;; 
@@ -521,7 +760,14 @@ that was stored with sjp/point-to-register."
 
 (add-hook 'org-mode-hook (lambda () (add-hook 'after-save-hook #'sjp/org-babel-tangle-config)))
 
-
+;; One last thing before we are finished: Start the emacs daemon
+;; if it isn't already running
+(require 'server)
+(unless (server-running-p)
+  (server-start))
+;; This will also kill the server in addition to the frame. To kill
+;; just the frame use "C-x 5 0"
+(global-set-key (kbd "C-x C-c") 'save-buffers-kill-emacs) 
 
 
 (provide 'init)
@@ -532,7 +778,7 @@ that was stored with sjp/point-to-register."
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
  '(package-selected-packages
-   '(org-bullets elpa-mirror smartscan markdown-mode flycheck smart-mode-line magit ivy-rich counsel ivy dired-subtree dirvish all-the-icons-dired all-the-icons poet-theme organic-green-theme color-theme-sanityinc-solarized leuven-theme modus-themes zenburn-theme labburn-theme hc-zenburn-theme which-key try auto-package-update use-package)))
+   '(gerrit git-gutter-fringe git-gutter embark-consult embark consult project org-bullets elpa-mirror smartscan markdown-mode flycheck smart-mode-line magit ivy-rich counsel ivy dired-subtree dirvish all-the-icons-dired all-the-icons poet-theme organic-green-theme color-theme-sanityinc-solarized leuven-theme modus-themes zenburn-theme labburn-theme hc-zenburn-theme which-key try auto-package-update use-package)))
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.
