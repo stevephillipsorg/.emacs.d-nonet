@@ -7,22 +7,6 @@
 ;; 
 ;;--------------------------------------------------------------------------- 
  
-;; There is a site-lisp file that is loaded first for all emacs users,
-;; located at:
-;;
-;;   /proj/ipbutools/fe/common/emacs-site-lisp/site-start.el
-;;
-;; The site-start.el does the following:
-;;
-;;   - Loads verilog-mode and sets some options
-;;   - Loads dir-project
-;;   - Load specman-mode
-;;   - Load csr3-mode and csr3-text-mode
-;;   - Load cn-log-mode
-;;   - Load a color-theme called "color-theme". 
-;;   - Load yaml-mode
-;;   - Create defun yasnippet-enable, for verilog-mode yasnippet
-;;   - Set various variables
  
 ;; Packages used:
 ;; - Ediff             : Compare files side by side
@@ -54,8 +38,6 @@
 ;; CTAGS
 ;; 1.) See the Wiki page at
 ;;   - https://scripter.co/ctags-systemverilog-and-emacs/
-;;   - https://ewiki.marvell.com/display/IS/Tagging+in+System+Verilog
-;;   - https://marvell-my.sharepoint.com/:p:/r/personal/earthur_marvell_com/Documents/Productivity%20with%20git%20and%20emacs.pptx?d=wc7c9ac14573a45b78aad5636bb77f371&csf=1&web=1&e=jPbWts
 ;; 2.) copy my ~/.ctags file to your $HOME
 ;; 3.) Go to the top of your repo and run "/usr/bin/ctags -e -V"
 ;; 4.) In Emacs use the M-. command to look up definition of variable at point
@@ -65,7 +47,7 @@
  
 ;; Set my name and email
 (setq user-full-name "Steve Phillips" 
-      user-mail-address "sphillips@marvell.com") 
+      user-mail-address "steve@phillips.org") 
  
 ;; A common optimization is to temporarily disable garbage collection 
 ;; during initialization, but in general the default is too low for 
@@ -154,14 +136,18 @@ that was stored with sjp/point-to-register."
 (winner-mode)
 (add-hook 'ediff-after-quit-hook-internal 'winner-undo)
  
+;;--------------------------------------------------------------------------- 
+;;
 ;; Use this function to determine if there is a connection to the
 ;; internet or not. Some things won't work without the internet
 ;; connection and we don't want to get stuck waiting for an internet
 ;; timeout. Tries to ping Google if no other host is specified.
+
 (defun sjp/internet-up-p (&optional host)
     (= 0 (call-process "ping" nil nil nil "-c" "1" "-W" "1" 
                        (if host host "www.google.com"))))
  
+
 ;; ---------------------------------------------------------------------------
 ;;
 ;; Some random settings...
@@ -176,6 +162,7 @@ that was stored with sjp/point-to-register."
                                       ;;   match other windows. Replace 
                                       ;;   'right with 'left to place it 
                                       ;;   to the left     
+(put 'downcase-region 'disabled nil)  ;; Enable downcase-region
 (setq frame-title-format              ;; default to better frame titles  
       (concat  "%b - emacs@" (system-name))) 
 (defalias 'list-buffers 'ibuffer)     ;; Use ibuffer instead of plain buffer list 
@@ -289,8 +276,9 @@ that was stored with sjp/point-to-register."
 ;; -------------------------------------------------------------------- 
 ;; Color Themes  
 ;; 
-;; Some other themes I like. Load them here and then select them with 
-;; <F5>  
+;; To switch between themes I use the consult-theme function, which I
+;; bind to "C-x t t" when I load and setup Consult later in this file.
+;;
 (use-package anti-zenburn-theme) ;; blues/purple on medium grey 
 ;;(use-package doneburn-theme)     ;; muted colors on white 
 (use-package hc-zenburn-theme)   ;; muted tans/green on dark grey 
@@ -306,7 +294,7 @@ that was stored with sjp/point-to-register."
 ;;  (use-package base16-theme) ;; too many flavors 
 (use-package poet-theme) 
  
-;; Set default theme 
+;; Set default theme
 (load-theme 'zenburn t) 
  
  
@@ -819,5 +807,4 @@ that was stored with sjp/point-to-register."
  
 (provide 'init)
 ;;; init.el ends here
-(put 'downcase-region 'disabled nil)
 
